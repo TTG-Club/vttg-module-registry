@@ -63,16 +63,33 @@ public class UrlPolicyTest {
     }
 
     @Test
-    void normalizesRepositoryLink() {
-        assertThat(policy.requireRepository("https://github.com/ttg/map-import.git/"))
-                .isEqualTo(URI.create("https://github.com/ttg/map-import"));
-        assertThat(policy.requireRepository("https://gitlab.com/group/sub/module"))
+    void derivesGithubRepositoryFromFileLink() {
+        URI repository = URI.create("https://github.com/ttg/map-import");
+
+        assertThat(policy.repositoryOf(
+                URI.create("https://raw.githubusercontent.com/ttg/map-import/main/module.json"), "manifestUrl"))
+                .isEqualTo(repository);
+        assertThat(policy.repositoryOf(
+                URI.create("https://github.com/ttg/map-import/releases/latest/download/module.json"), "manifestUrl"))
+                .isEqualTo(repository);
+    }
+
+    @Test
+    void derivesGitlabRepositoryWithNestedGroups() {
+        assertThat(policy.repositoryOf(
+                URI.create("https://gitlab.com/group/sub/module/-/raw/main/module.json"), "manifestUrl"))
                 .isEqualTo(URI.create("https://gitlab.com/group/sub/module"));
     }
 
     @Test
-    void repositoryLinkNeedsOwnerAndName() {
-        assertThatThrownBy(() -> policy.requireRepository("https://github.com/ttg"))
+    void refusesLinksWithoutRepository() {
+        assertThatThrownBy(() -> policy.repositoryOf(URI.create("https://github.com/ttg"), "manifestUrl"))
+                .isInstanceOf(InvalidManifestException.class);
+        assertThatThrownBy(() -> policy.repositoryOf(URI.create("https://github.com/ttg/module.json"), "manifestUrl"))
+                .isInstanceOf(InvalidManifestException.class);
+        // У GitLab без «/-/» не понять, где кончается путь репозитория.
+        assertThatThrownBy(() -> policy.repositoryOf(
+                URI.create("https://gitlab.com/group/module/raw/main/module.json"), "manifestUrl"))
                 .isInstanceOf(InvalidManifestException.class);
     }
 

@@ -67,8 +67,8 @@ class SubmissionServiceTest {
         given(repository.findLiveByModuleId("m")).willReturn(List.of(approved));
         given(manifestFetcher.fetch(any())).willReturn(manifest("https://github.com/a/new/releases/download/v1/m.zip"));
 
-        var response = service.submit(AUTHOR, "author", request("https://github.com/a/new",
-                "https://raw.githubusercontent.com/a/new/main/module.json"));
+        var response = service.submit(AUTHOR, "author",
+                request("https://raw.githubusercontent.com/a/new/main/module.json"));
 
         assertThat(response.status()).isEqualTo(SubmissionStatus.PENDING);
         assertThat(response.repositoryUrl()).isEqualTo("https://github.com/a/new");
@@ -80,7 +80,7 @@ class SubmissionServiceTest {
         given(repository.findLiveByModuleId("m")).willReturn(List.of(pending));
         given(manifestFetcher.fetch(any())).willReturn(manifest("https://github.com/a/b/releases/download/v1/m.zip"));
 
-        assertThatThrownBy(() -> service.submit(AUTHOR, "author", request(REPOSITORY, MANIFEST)))
+        assertThatThrownBy(() -> service.submit(AUTHOR, "author", request(MANIFEST)))
                 .isInstanceOf(ModuleIdTakenException.class)
                 .hasMessageContaining("на рассмотрении");
     }
@@ -92,22 +92,22 @@ class SubmissionServiceTest {
         given(repository.findLiveByModuleId("m")).willReturn(List.of(foreign));
         given(manifestFetcher.fetch(any())).willReturn(manifest("https://github.com/a/b/releases/download/v1/m.zip"));
 
-        assertThatThrownBy(() -> service.submit(AUTHOR, "author", request(REPOSITORY, MANIFEST)))
+        assertThatThrownBy(() -> service.submit(AUTHOR, "author", request(MANIFEST)))
                 .isInstanceOf(ModuleIdTakenException.class)
                 .hasMessageContaining("другим автором");
     }
 
     @Test
-    void manifestAndArchiveMustLiveInRepository() {
+    void archiveMustLiveInManifestRepository() {
         given(repository.findLiveByModuleId("m")).willReturn(List.of());
 
-        assertThatThrownBy(() -> service.submit(AUTHOR, "author",
-                request(REPOSITORY, "https://raw.githubusercontent.com/evil/x/main/module.json")))
+        // Из такой ссылки не понять, в каком репозитории лежит манифест.
+        assertThatThrownBy(() -> service.submit(AUTHOR, "author", request("https://github.com/a")))
                 .isInstanceOf(InvalidManifestException.class)
                 .hasMessageContaining("manifestUrl");
 
         given(manifestFetcher.fetch(any())).willReturn(manifest("https://github.com/evil/x/releases/download/v1/m.zip"));
-        assertThatThrownBy(() -> service.submit(AUTHOR, "author", request(REPOSITORY, MANIFEST)))
+        assertThatThrownBy(() -> service.submit(AUTHOR, "author", request(MANIFEST)))
                 .isInstanceOf(InvalidManifestException.class)
                 .hasMessageContaining("download");
         verify(repository, never()).save(any());
@@ -139,8 +139,8 @@ class SubmissionServiceTest {
         verify(repository).saveAndFlush(previous);
     }
 
-    private static SubmissionRequest request(String repositoryUrl, String manifestUrl) {
-        return new SubmissionRequest(repositoryUrl, manifestUrl, "Описание", List.of());
+    private static SubmissionRequest request(String manifestUrl) {
+        return new SubmissionRequest(manifestUrl, "Описание", List.of());
     }
 
     private static ModuleManifest manifest(String download) {

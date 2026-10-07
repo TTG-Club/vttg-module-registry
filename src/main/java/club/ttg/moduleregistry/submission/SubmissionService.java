@@ -177,9 +177,9 @@ public class SubmissionService {
 
     /** Проверки без базы и загрузка манифеста — до транзакции. */
     private Prepared prepare(SubmissionRequest request) {
-        URI repositoryUrl = urlPolicy.requireRepository(request.repositoryUrl());
         URI manifestUrl = manifestFetcher.resolveManifestUrl(request.manifestUrl());
-        urlPolicy.requireInsideRepository(repositoryUrl, manifestUrl, "manifestUrl");
+        // Репозиторий не спрашиваем у автора, а берём из ссылки на манифест.
+        URI repositoryUrl = urlPolicy.repositoryOf(manifestUrl, "manifestUrl");
         Set<String> systemIds = gameSystemService.requireExisting(request.systemIds());
         ModuleManifest manifest = fetchFromRepository(repositoryUrl, manifestUrl);
 

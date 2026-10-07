@@ -75,25 +75,46 @@ public class UrlPolicy {
     }
 
     /**
-     * Нормализованная ссылка на репозиторий: без хвостового «/» и «.git».
-     * По ней сравниваются ссылки заявок, поэтому вид должен быть один.
+     * Репозиторий, в котором лежит файл, — по самой ссылке на файл:
+     * <ul>
+     *   <li>GitHub ({@code github.com} и {@code raw.githubusercontent.com}) —
+     *       первые два сегмента пути, «владелец/репозиторий»;</li>
+     *   <li>GitLab — всё до служебного {@code /-/} (группы бывают вложенными,
+     *       а {@code /-/} отделяет путь репозитория и в облаке, и у своего
+     *       сервера).</li>
+     * </ul>
+     * Автору не нужно отдельно указывать репозиторий, и указать «чужой» нельзя.
      */
-    public URI requireRepository(String raw) {
-        URI uri = require(raw, "repositoryUrl");
-        String path = repositoryPath(uri);
-        // Минимум «/владелец/репозиторий»: у GitLab групп может быть больше.
-        boolean hasOwnerAndName = path.split("/").length >= 3;
-        if (!hasOwnerAndName || uri.getRawQuery() != null || uri.getRawFragment() != null) {
-            throw new InvalidManifestException("repositoryUrl: нужна ссылка на сам репозиторий");
+    public URI repositoryOf(URI file, String field) {
+        String host = file.getHost() == null ? "" : file.getHost().toLowerCase(Locale.ROOT);
+        String path = file.normalize().getRawPath() == null ? "" : file.normalize().getRawPath();
+
+        if ("github.com".equals(host) || "raw.githubusercontent.com".equals(host)) {
+            String[] segments = path.split("/");
+            // ["", владелец, репозиторий, ...дальше хотя бы один сегмент файла]
+            if (segments.length < 4 || segments[1].isEmpty() || segments[2].isEmpty()) {
+                throw new InvalidManifestException(field + ": не видно, в каком репозитории GitHub лежит файл");
+            }
+            return URI.create("https://github.com/" + segments[1] + "/" + stripGit(segments[2]));
         }
-        return URI.create("https://" + uri.getHost().toLowerCase(Locale.ROOT) + path);
+
+        int separator = path.indexOf("/-/");
+        if (separator <= 0 || path.substring(0, separator).split("/").length < 3) {
+            throw new InvalidManifestException(field
+                    + ": не видно, в каком репозитории лежит файл. Нужна ссылка на файл в GitHub или GitLab");
+        }
+        return URI.create("https://" + host + stripGit(path.substring(0, separator)));
+    }
+
+    private static String stripGit(String name) {
+        return name.endsWith(".git") ? name.substring(0, name.length() - ".git".length()) : name;
     }
 
     /**
-     * Проверяет, что файл лежит в заявленном репозитории: тот же хост (для
-     * GitHub — ещё и raw.githubusercontent.com) и путь внутри репозитория.
-     * Иначе одобренная ссылка на репозиторий ничего бы не значила: манифест
-     * и архив могли бы вести куда угодно.
+     * Проверяет, что файл лежит в том же репозитории, что и манифест: тот же
+     * хост (для GitHub — ещё и raw.githubusercontent.com) и путь внутри
+     * репозитория. Иначе одобренная ссылка ничего бы не значила: архив мог бы
+     * вести куда угодно.
      */
     public void requireInsideRepository(URI repository, URI file, String field) {
         String fileHost = file.getHost() == null ? "" : file.getHost().toLowerCase(Locale.ROOT);

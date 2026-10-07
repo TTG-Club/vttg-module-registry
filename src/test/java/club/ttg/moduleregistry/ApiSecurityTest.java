@@ -60,7 +60,6 @@ class ApiSecurityTest {
 
     private static final String VALID_SUBMISSION = """
             {
-              "repositoryUrl": "https://github.com/a/b",
               "manifestUrl": "https://github.com/a/b/blob/main/module.json",
               "description": "Импорт карт",
               "systemIds": ["dnd5e-2024"]
@@ -144,9 +143,8 @@ class ApiSecurityTest {
         mockMvc.perform(post("/api/v1/submissions")
                         .header(HttpHeaders.AUTHORIZATION, bearer(UUID.randomUUID(), "USER"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"repositoryUrl\": \"\", \"systemIds\": []}"))
+                        .content("{\"manifestUrl\": \"\", \"systemIds\": []}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors.repositoryUrl").exists())
                 .andExpect(jsonPath("$.errors.manifestUrl").exists())
                 .andExpect(jsonPath("$.errors.description").exists());
     }

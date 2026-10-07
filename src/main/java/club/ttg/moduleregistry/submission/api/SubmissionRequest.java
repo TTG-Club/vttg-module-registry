@@ -7,16 +7,16 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
- * Заявка автора.
+ * Заявка автора. Репозиторий отдельно не указывается: сервис берёт его из
+ * ссылки на манифест.
  *
- * @param repositoryUrl открытый репозиторий модуля — его смотрит модератор
- * @param manifestUrl   прямая ссылка на {@code module.json}; страницу файла
- *                      на GitHub сервис сам заменит на «сырой» файл
- * @param systemIds     id игровых систем из справочника; пустой список —
- *                      модуль универсальный
+ * @param manifestUrl ссылка на {@code module.json} в открытом репозитории
+ *                    GitHub или GitLab; страницу файла на GitHub сервис сам
+ *                    заменит на «сырой» файл
+ * @param systemIds   id игровых систем из справочника; пустой список —
+ *                    модуль универсальный
  */
 public record SubmissionRequest(
-        @NotBlank @Size(max = 2048) String repositoryUrl,
         @NotBlank @Size(max = 2048) String manifestUrl,
         @NotBlank @Size(max = 1000) String description,
         @NotNull @Size(max = 20) List<@NotBlank @Size(max = 64) String> systemIds

@@ -136,7 +136,7 @@ public class ModuleSubmission {
         if (isLinksLocked()) {
             if (!this.repositoryUrl.equals(repositoryUrl) || !this.manifestUrl.equals(manifestUrl)) {
                 throw new InvalidSubmissionStateException(
-                        "Ссылки одобренного модуля менять нельзя. Чтобы сменить их, подайте новую заявку");
+                        "Ссылку на module.json одобренного модуля менять нельзя. Чтобы сменить её, подайте новую заявку");
             }
             if (!manifest.id().equals(moduleId)) {
                 throw new InvalidSubmissionStateException(
