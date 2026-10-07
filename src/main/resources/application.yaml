@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: vttg-module-registry
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/vttg_modules}
+    username: ${DB_USERNAME:vttg_modules}
+    password: ${DB_PASSWORD:vttg_modules}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_batch_fetch_size: 50
+        jdbc:
+          time_zone: UTC
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+auth-service:
+  jwt-secret: ${AUTH_SERVICE_JWT_SECRET}
+
+# Откуда сервис соглашается читать module.json и куда может вести поле download.
+# Только https; адреса внутренних сетей не проходят независимо от списка.
+manifest:
+  allowed-hosts: ${MANIFEST_ALLOWED_HOSTS:github.com,raw.githubusercontent.com,objects.githubusercontent.com,gitlab.com,codeberg.org,gitflic.ru,gitverse.ru}
+  max-size: ${MANIFEST_MAX_SIZE:256KB}
+  timeout: ${MANIFEST_TIMEOUT:10s}
+  max-redirects: 3
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:https://new.ttg.club,https://ttg.club,https://dev.ttg.club}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logbook:
+  format:
+    style: json
+  obfuscate:
+    headers:
+      - Authorization
+      - Cookie
+      - Set-Cookie
+  write:
+    max-body-size: 8192
+  exclude:
+    - /actuator/health
+    - /v3/api-docs/**
+    - /swagger-ui/**
