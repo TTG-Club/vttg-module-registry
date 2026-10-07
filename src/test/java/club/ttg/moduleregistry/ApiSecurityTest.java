@@ -9,6 +9,7 @@ import club.ttg.moduleregistry.submission.SubmissionController;
 import club.ttg.moduleregistry.submission.SubmissionModerationController;
 import club.ttg.moduleregistry.submission.SubmissionNotFoundException;
 import club.ttg.moduleregistry.submission.SubmissionService;
+import club.ttg.moduleregistry.submission.SubmissionStatus;
 import club.ttg.moduleregistry.system.GameSystemController;
 import club.ttg.moduleregistry.system.GameSystemService;
 import io.jsonwebtoken.Jwts;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
@@ -209,6 +211,30 @@ class ApiSecurityTest {
                         .content("{\"comment\": \"Нет README\"}"))
                 .andExpect(status().isOk());
         verify(submissionService).reject(submissionId, adminId, "Нет README");
+    }
+
+    @Test
+    void moderationQueueFiltersBySeveralStatuses() throws Exception {
+        given(submissionService.findForModeration(any(), any())).willReturn(Page.empty());
+
+        mockMvc.perform(get("/api/v1/moderation/submissions")
+                        .param("status", "PENDING", "REJECTED")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(UUID.randomUUID(), "MODERATOR")))
+                .andExpect(status().isOk());
+        verify(submissionService).findForModeration(
+                eq(List.of(SubmissionStatus.PENDING, SubmissionStatus.REJECTED)), any());
+
+        mockMvc.perform(get("/api/v1/moderation/submissions")
+                        .param("status", "APPROVED,SUPERSEDED")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(UUID.randomUUID(), "MODERATOR")))
+                .andExpect(status().isOk());
+        verify(submissionService).findForModeration(
+                eq(List.of(SubmissionStatus.APPROVED, SubmissionStatus.SUPERSEDED)), any());
+
+        mockMvc.perform(get("/api/v1/moderation/submissions")
+                        .param("status", "UNKNOWN")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(UUID.randomUUID(), "MODERATOR")))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

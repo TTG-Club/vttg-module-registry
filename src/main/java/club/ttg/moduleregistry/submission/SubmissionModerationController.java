@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 /** Очередь модерации: администратор одобряет или отклоняет заявки. */
@@ -37,12 +38,13 @@ public class SubmissionModerationController {
     }
 
     @GetMapping
-    @Operation(summary = "Заявки по статусу; без статуса — все. Старые сверху")
+    @Operation(summary = "Заявки с выбранными статусами; без статусов — все. Старые сверху")
     public Page<SubmissionResponse> find(
-            @RequestParam(required = false) SubmissionStatus status,
+            @Parameter(description = "Статусы через запятую или повтором параметра; без них — все заявки")
+            @RequestParam(name = "status", required = false) List<SubmissionStatus> statuses,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.ASC) Pageable pageable
     ) {
-        return service.findForModeration(status, pageable);
+        return service.findForModeration(statuses, pageable);
     }
 
     @PostMapping("/{id}/approve")

@@ -14,6 +14,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -132,10 +133,11 @@ public class SubmissionService {
         });
     }
 
-    public Page<SubmissionResponse> findForModeration(SubmissionStatus status, Pageable pageable) {
-        return readOnly.execute(tx -> (status == null
+    /** Очередь модерации: заявки с любым из статусов; пустой список — все заявки. */
+    public Page<SubmissionResponse> findForModeration(Collection<SubmissionStatus> statuses, Pageable pageable) {
+        return readOnly.execute(tx -> (statuses == null || statuses.isEmpty()
                 ? repository.findAll(pageable)
-                : repository.findByStatus(status, pageable))
+                : repository.findByStatusIn(statuses, pageable))
                 .map(SubmissionResponse::from));
     }
 

@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,7 +22,7 @@ public interface ModuleSubmissionRepository extends JpaRepository<ModuleSubmissi
 
     List<ModuleSubmission> findByAuthorIdOrderByCreatedAtDesc(UUID authorId);
 
-    Page<ModuleSubmission> findByStatus(SubmissionStatus status, Pageable pageable);
+    Page<ModuleSubmission> findByStatusIn(Collection<SubmissionStatus> statuses, Pageable pageable);
 
     @Query("""
             select s from ModuleSubmission s
