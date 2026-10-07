@@ -17,7 +17,7 @@ public interface ModuleSubmissionRepository extends JpaRepository<ModuleSubmissi
               and s.status in (club.ttg.moduleregistry.submission.SubmissionStatus.PENDING,
                                club.ttg.moduleregistry.submission.SubmissionStatus.APPROVED)
             """)
-    Optional<ModuleSubmission> findLiveByModuleId(String moduleId);
+    List<ModuleSubmission> findLiveByModuleId(String moduleId);
 
     List<ModuleSubmission> findByAuthorIdOrderByCreatedAtDesc(UUID authorId);
 

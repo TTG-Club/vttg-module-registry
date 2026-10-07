@@ -24,10 +24,13 @@ springdoc:
 auth-service:
   jwt-secret: ${AUTH_SERVICE_JWT_SECRET}
 
-# Откуда сервис соглашается читать module.json и куда может вести поле download.
+# Где могут лежать модули: хосты открытых репозиториев (через запятую).
+# По умолчанию — только GitHub и GitLab; raw.githubusercontent.com нужен для
+# «сырых» файлов GitHub. Свой GitLab добавляется сюда же, например:
+# MANIFEST_ALLOWED_HOSTS=github.com,raw.githubusercontent.com,gitlab.com,git.example.org
 # Только https; адреса внутренних сетей не проходят независимо от списка.
 manifest:
-  allowed-hosts: ${MANIFEST_ALLOWED_HOSTS:github.com,raw.githubusercontent.com,objects.githubusercontent.com,gitlab.com,codeberg.org,gitflic.ru,gitverse.ru}
+  allowed-hosts: ${MANIFEST_ALLOWED_HOSTS:github.com,raw.githubusercontent.com,gitlab.com}
   max-size: ${MANIFEST_MAX_SIZE:256KB}
   timeout: ${MANIFEST_TIMEOUT:10s}
   max-redirects: 3

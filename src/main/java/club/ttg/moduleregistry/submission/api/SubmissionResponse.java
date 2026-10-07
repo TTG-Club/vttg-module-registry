@@ -19,6 +19,9 @@ public record SubmissionResponse(
         List<String> systemIds,
         ModuleInfo module,
         Moderation moderation,
+        /** Ссылки зафиксированы первым одобрением: сменить их можно только новой заявкой. */
+        boolean linksLocked,
+        Instant approvedAt,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -64,6 +67,8 @@ public record SubmissionResponse(
                         submission.getModerationComment(),
                         submission.getReviewedAt()
                 ),
+                submission.isLinksLocked(),
+                submission.getApprovedAt(),
                 submission.getCreatedAt(),
                 submission.getUpdatedAt()
         );

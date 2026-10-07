@@ -83,6 +83,10 @@ public class ModuleSubmission {
     @Column(name = "reviewed_at")
     private Instant reviewedAt;
 
+    /** Первое одобрение; с него ссылки заявки больше не меняются. */
+    @Column(name = "approved_at")
+    private Instant approvedAt;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -127,8 +131,18 @@ public class ModuleSubmission {
     ) {
         if (status != SubmissionStatus.PENDING && status != SubmissionStatus.REJECTED) {
             throw new InvalidSubmissionStateException(
-                    "Править можно только заявку на рассмотрении или отклонённую. "
-                            + "Одобренную сначала отзовите и подайте заново");
+                    "Править можно только заявку на рассмотрении или отклонённую");
+        }
+        if (isLinksLocked()) {
+            if (!this.repositoryUrl.equals(repositoryUrl) || !this.manifestUrl.equals(manifestUrl)) {
+                throw new InvalidSubmissionStateException(
+                        "Ссылки одобренного модуля менять нельзя. Чтобы сменить их, подайте новую заявку");
+            }
+            if (!manifest.id().equals(moduleId)) {
+                throw new InvalidSubmissionStateException(
+                        "В манифесте сменился id модуля (" + moduleId + " → " + manifest.id()
+                                + "). Это другой модуль — подайте на него отдельную заявку");
+            }
         }
         setDetails(repositoryUrl, manifestUrl, description, systemIds);
         applyManifest(manifest, now);
@@ -143,8 +157,8 @@ public class ModuleSubmission {
      * не требует повторной модерации, а id модуля менять нельзя.
      */
     public void refreshManifest(ModuleManifest manifest, Instant now) {
-        if (status == SubmissionStatus.WITHDRAWN) {
-            throw new InvalidSubmissionStateException("Заявка отозвана");
+        if (status.isFinal()) {
+            throw new InvalidSubmissionStateException("Заявка закрыта");
         }
         if (!manifest.id().equals(moduleId)) {
             throw new InvalidSubmissionStateException(
@@ -159,6 +173,26 @@ public class ModuleSubmission {
             throw new InvalidSubmissionStateException("Одобрить можно только заявку на рассмотрении");
         }
         decide(SubmissionStatus.APPROVED, moderatorId, comment, now);
+        if (approvedAt == null) {
+            approvedAt = now;
+        }
+    }
+
+    /** Одобрена новая заявка автора на этот же модуль — эта уходит из каталога. */
+    public void supersede(Instant now) {
+        if (status != SubmissionStatus.APPROVED) {
+            throw new InvalidSubmissionStateException("Заменить можно только одобренную заявку");
+        }
+        status = SubmissionStatus.SUPERSEDED;
+        updatedAt = now;
+    }
+
+    /**
+     * Ссылки на репозиторий и манифест фиксируются при первом одобрении и
+     * дальше не меняются — даже если модуль сняли из каталога.
+     */
+    public boolean isLinksLocked() {
+        return approvedAt != null;
     }
 
     /** Отклоняет заявку на рассмотрении или снимает модуль из каталога. */
@@ -174,8 +208,8 @@ public class ModuleSubmission {
     }
 
     public void withdraw(Instant now) {
-        if (status == SubmissionStatus.WITHDRAWN) {
-            throw new InvalidSubmissionStateException("Заявка уже отозвана");
+        if (status.isFinal()) {
+            throw new InvalidSubmissionStateException("Заявка уже закрыта");
         }
         status = SubmissionStatus.WITHDRAWN;
         updatedAt = now;
@@ -287,6 +321,10 @@ public class ModuleSubmission {
 
     public Instant getReviewedAt() {
         return reviewedAt;
+    }
+
+    public Instant getApprovedAt() {
+        return approvedAt;
     }
 
     public Instant getCreatedAt() {

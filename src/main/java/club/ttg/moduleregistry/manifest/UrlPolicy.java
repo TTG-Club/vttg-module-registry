@@ -73,4 +73,51 @@ public class UrlPolicy {
         return URI.create("https://raw.githubusercontent.com/"
                 + matcher.group(1) + "/" + matcher.group(2) + "/" + matcher.group(3));
     }
+
+    /**
+     * Нормализованная ссылка на репозиторий: без хвостового «/» и «.git».
+     * По ней сравниваются ссылки заявок, поэтому вид должен быть один.
+     */
+    public URI requireRepository(String raw) {
+        URI uri = require(raw, "repositoryUrl");
+        String path = repositoryPath(uri);
+        // Минимум «/владелец/репозиторий»: у GitLab групп может быть больше.
+        boolean hasOwnerAndName = path.split("/").length >= 3;
+        if (!hasOwnerAndName || uri.getRawQuery() != null || uri.getRawFragment() != null) {
+            throw new InvalidManifestException("repositoryUrl: нужна ссылка на сам репозиторий");
+        }
+        return URI.create("https://" + uri.getHost().toLowerCase(Locale.ROOT) + path);
+    }
+
+    /**
+     * Проверяет, что файл лежит в заявленном репозитории: тот же хост (для
+     * GitHub — ещё и raw.githubusercontent.com) и путь внутри репозитория.
+     * Иначе одобренная ссылка на репозиторий ничего бы не значила: манифест
+     * и архив могли бы вести куда угодно.
+     */
+    public void requireInsideRepository(URI repository, URI file, String field) {
+        String fileHost = file.getHost() == null ? "" : file.getHost().toLowerCase(Locale.ROOT);
+        String repositoryHost = repository.getHost().toLowerCase(Locale.ROOT);
+        boolean sameHost = fileHost.equals(repositoryHost)
+                || ("github.com".equals(repositoryHost) && "raw.githubusercontent.com".equals(fileHost));
+
+        String prefix = repositoryPath(repository) + "/";
+        String filePath = file.normalize().getRawPath();
+
+        if (!sameHost || filePath == null || !filePath.startsWith(prefix) || filePath.contains("/../")) {
+            throw new InvalidManifestException(
+                    field + ": файл должен лежать в репозитории " + repository);
+        }
+    }
+
+    private static String repositoryPath(URI uri) {
+        String path = uri.normalize().getRawPath() == null ? "" : uri.normalize().getRawPath();
+        while (path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
+        if (path.endsWith(".git")) {
+            path = path.substring(0, path.length() - ".git".length());
+        }
+        return path;
+    }
 }

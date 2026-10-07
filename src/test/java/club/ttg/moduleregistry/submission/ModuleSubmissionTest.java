@@ -113,6 +113,52 @@ class ModuleSubmissionTest {
     }
 
     @Test
+    void linksAreEditableUntilFirstApproval() {
+        ModuleSubmission submission = pending();
+        assertThat(submission.isLinksLocked()).isFalse();
+
+        submission.resubmit("https://github.com/a/c", "https://raw.githubusercontent.com/a/c/main/module.json",
+                "x", List.of(), manifest("m", "1.0.0"), NOW);
+
+        assertThat(submission.getRepositoryUrl()).isEqualTo("https://github.com/a/c");
+    }
+
+    @Test
+    void approvalLocksLinksEvenAfterTakeDown() {
+        ModuleSubmission submission = pending();
+        submission.approve(MODERATOR, null, NOW);
+        submission.reject(MODERATOR, "Нарушает правила", NOW);
+
+        assertThat(submission.isLinksLocked()).isTrue();
+        assertThat(submission.getApprovedAt()).isEqualTo(NOW);
+        assertThatThrownBy(() -> submission.resubmit("https://github.com/a/other",
+                "https://raw.githubusercontent.com/a/other/main/module.json", "x", List.of(),
+                manifest("m", "1.0.1"), NOW))
+                .isInstanceOf(InvalidSubmissionStateException.class)
+                .hasMessageContaining("новую заявку");
+
+        // Описание и системы с прежними ссылками поправить можно.
+        submission.resubmit("https://github.com/a/b", "https://raw.githubusercontent.com/a/b/main/module.json",
+                "Исправил", List.of(), manifest("m", "1.0.1"), NOW);
+        assertThat(submission.getStatus()).isEqualTo(SubmissionStatus.PENDING);
+        assertThat(submission.isLinksLocked()).isTrue();
+    }
+
+    @Test
+    void supersededSubmissionIsClosed() {
+        ModuleSubmission submission = pending();
+        assertThatThrownBy(() -> submission.supersede(NOW)).isInstanceOf(InvalidSubmissionStateException.class);
+
+        submission.approve(MODERATOR, null, NOW);
+        submission.supersede(NOW);
+
+        assertThat(submission.getStatus()).isEqualTo(SubmissionStatus.SUPERSEDED);
+        assertThatThrownBy(() -> submission.withdraw(NOW)).isInstanceOf(InvalidSubmissionStateException.class);
+        assertThatThrownBy(() -> submission.refreshManifest(manifest("m", "2.0.0"), NOW))
+                .isInstanceOf(InvalidSubmissionStateException.class);
+    }
+
+    @Test
     void withdrawIsFinal() {
         ModuleSubmission submission = pending();
 

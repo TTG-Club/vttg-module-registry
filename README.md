@@ -20,7 +20,7 @@ Swagger: `http://localhost:8080/swagger-ui.html`.
 |---|---|---|
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | `jdbc:postgresql://localhost:5433/vttg_modules`, `vttg_modules` | |
 | `AUTH_SERVICE_JWT_SECRET` | — | обязательна, ≥ 32 байт |
-| `MANIFEST_ALLOWED_HOSTS` | github.com, raw.githubusercontent.com, objects.githubusercontent.com, gitlab.com, codeberg.org, gitflic.ru, gitverse.ru | хосты для ссылок на репозиторий, манифест и архив |
+| `MANIFEST_ALLOWED_HOSTS` | github.com, raw.githubusercontent.com, gitlab.com | где могут лежать модули: хосты открытых репозиториев через запятую (свой GitLab добавляется сюда же) |
 | `MANIFEST_MAX_SIZE` / `MANIFEST_TIMEOUT` | `256KB` / `10s` | |
 | `CORS_ALLOWED_ORIGINS` | https://new.ttg.club, https://ttg.club, https://dev.ttg.club | сайт с формой заявки и модерацией |
 
@@ -59,15 +59,24 @@ Swagger: `http://localhost:8080/swagger-ui.html`.
 ```
 PENDING ──approve──▶ APPROVED ──reject (снятие из каталога)──▶ REJECTED
 PENDING ──reject───▶ REJECTED ──правка автором──▶ PENDING
-любой, кроме WITHDRAWN ──withdraw──▶ WITHDRAWN
+APPROVED ──одобрена заявка-замена того же автора──▶ SUPERSEDED
+любой, кроме WITHDRAWN и SUPERSEDED ──withdraw──▶ WITHDRAWN
 ```
 
-- На один `id` модуля — одна живая заявка (`PENDING` или `APPROVED`); чужой
-  `id` занять нельзя, отклонённые и отозванные его не держат.
+- Модули — только из открытых репозиториев на хостах из `MANIFEST_ALLOWED_HOSTS`
+  (по умолчанию GitHub и GitLab). `module.json` и архив из `download` должны
+  лежать в заявленном репозитории; закрытый репозиторий отсекается сам —
+  манифест читается без авторизации.
+- **Первое одобрение фиксирует ссылки** на репозиторий и манифест — даже если
+  модуль потом сняли из каталога. Чтобы сменить ссылку, автор подаёт новую
+  заявку на тот же модуль; старая остаётся в каталоге, пока новую не одобрят,
+  а после одобрения получает статус `SUPERSEDED`.
+- Чужой `id` модуля занять нельзя. У своего модуля — не больше одной
+  одобренной заявки и одной на рассмотрении.
 - Отклонение требует комментария.
-- Одобренную заявку не правят: новая версия модуля подхватывается
-  перечитыванием манифеста без повторной модерации (менять `id` нельзя);
-  для смены описания или систем — отозвать и подать заново.
+- Новая версия модуля подхватывается перечитыванием манифеста без повторной
+  модерации; `id` модуля менять нельзя, архив по-прежнему должен лежать в
+  том же репозитории.
 
 ## API
 
@@ -113,3 +122,11 @@ PENDING ──reject───▶ REJECTED ──правка автором─�
 `version` и `downloadUrl` — снимок на момент последней синхронизации; при
 установке VTTG стоит читать актуальный манифест по `manifestUrl` — так же, как
 он уже делает для систем (`remoteSystemInstaller.ts`).
+
+## Деплой
+
+`.github/workflows/deploy.yml` — как у остальных сервисов: пуш в `main` или `dev`
+собирает образ через `TTG-Club/shared-workflows/standard@v1` и выкатывает его в
+Dokploy (`main` → прод, `dev` → стенд). В репозитории нужны секреты
+`DOKPLOY_APP_ID_PROD`, `DOKPLOY_APP_ID_DEV`, `DOKPLOY_URL`, `DOKPLOY_API_KEY`,
+`REGISTRY_URL`, `REGISTRY_USERNAME`, `REGISTRY_PASSWORD`, `COSIGN_PRIVATE_KEY`.

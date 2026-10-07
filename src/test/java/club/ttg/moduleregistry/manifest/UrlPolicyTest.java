@@ -8,11 +8,11 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class UrlPolicyTest {
+public class UrlPolicyTest {
 
     private final UrlPolicy policy = new UrlPolicy(properties());
 
-    static ManifestProperties properties() {
+    public static ManifestProperties properties() {
         return new ManifestProperties(
                 List.of("github.com", "raw.githubusercontent.com", " GitLab.com "), null, null, null);
     }
@@ -60,6 +60,52 @@ class UrlPolicyTest {
 
         assertThat(policy.toRawFile(blob))
                 .isEqualTo(URI.create("https://raw.githubusercontent.com/ttg/map-import/main/module.json"));
+    }
+
+    @Test
+    void normalizesRepositoryLink() {
+        assertThat(policy.requireRepository("https://github.com/ttg/map-import.git/"))
+                .isEqualTo(URI.create("https://github.com/ttg/map-import"));
+        assertThat(policy.requireRepository("https://gitlab.com/group/sub/module"))
+                .isEqualTo(URI.create("https://gitlab.com/group/sub/module"));
+    }
+
+    @Test
+    void repositoryLinkNeedsOwnerAndName() {
+        assertThatThrownBy(() -> policy.requireRepository("https://github.com/ttg"))
+                .isInstanceOf(InvalidManifestException.class);
+    }
+
+    @Test
+    void acceptsFilesInsideRepository() {
+        URI repository = URI.create("https://github.com/ttg/map-import");
+
+        policy.requireInsideRepository(repository,
+                URI.create("https://raw.githubusercontent.com/ttg/map-import/main/module.json"), "manifestUrl");
+        policy.requireInsideRepository(repository,
+                URI.create("https://github.com/ttg/map-import/releases/download/v1/m.zip"), "download");
+        policy.requireInsideRepository(URI.create("https://gitlab.com/group/module"),
+                URI.create("https://gitlab.com/group/module/-/raw/main/module.json"), "manifestUrl");
+    }
+
+    @Test
+    void rejectsFilesOutsideRepository() {
+        URI repository = URI.create("https://github.com/ttg/map-import");
+
+        assertThatThrownBy(() -> policy.requireInsideRepository(repository,
+                URI.create("https://github.com/evil/other/releases/download/v1/m.zip"), "download"))
+                .isInstanceOf(InvalidManifestException.class)
+                .hasMessageContaining("download");
+        // Совпадение по началу имени — не тот же репозиторий.
+        assertThatThrownBy(() -> policy.requireInsideRepository(repository,
+                URI.create("https://github.com/ttg/map-import-fork/raw/main/m.zip"), "download"))
+                .isInstanceOf(InvalidManifestException.class);
+        assertThatThrownBy(() -> policy.requireInsideRepository(repository,
+                URI.create("https://gitlab.com/ttg/map-import/-/raw/main/m.zip"), "download"))
+                .isInstanceOf(InvalidManifestException.class);
+        assertThatThrownBy(() -> policy.requireInsideRepository(repository,
+                URI.create("https://github.com/ttg/map-import/../other/m.zip"), "download"))
+                .isInstanceOf(InvalidManifestException.class);
     }
 
     @Test

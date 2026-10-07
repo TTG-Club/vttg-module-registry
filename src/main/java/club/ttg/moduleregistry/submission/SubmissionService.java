@@ -13,6 +13,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.net.URI;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -94,10 +95,15 @@ public class SubmissionService {
         });
     }
 
-    /** Перечитывает {@code module.json} по сохранённой ссылке: новая версия, новый архив. */
+    /**
+     * Перечитывает {@code module.json} по сохранённой ссылке: новая версия и
+     * архив без повторной модерации. Архив по-прежнему обязан лежать в том же
+     * репозитории, так что сменить источник модуля так нельзя.
+     */
     public SubmissionResponse refreshManifest(UUID id, UUID userId) {
-        String manifestUrl = readOnly.execute(status -> requireOwned(id, userId).getManifestUrl());
-        ModuleManifest manifest = manifestFetcher.fetch(URI.create(manifestUrl));
+        ModuleSubmission stored = readOnly.execute(status -> requireOwned(id, userId));
+        ModuleManifest manifest = fetchFromRepository(
+                URI.create(stored.getRepositoryUrl()), URI.create(stored.getManifestUrl()));
 
         return transaction.execute(status -> {
             ModuleSubmission submission = requireOwned(id, userId);
@@ -133,10 +139,30 @@ public class SubmissionService {
                 .map(SubmissionResponse::from));
     }
 
+    /**
+     * Одобряет заявку. Если у модуля уже есть одобренная заявка того же
+     * автора, новая её заменяет: прежняя уходит из каталога со статусом
+     * {@link SubmissionStatus#SUPERSEDED}.
+     */
     public SubmissionResponse approve(UUID id, UUID moderatorId, String comment) {
         return transaction.execute(status -> {
             ModuleSubmission submission = require(id);
-            submission.approve(moderatorId, comment, clock.instant());
+            Instant now = clock.instant();
+
+            repository.findApprovedByModuleId(submission.getModuleId())
+                    .filter(approved -> !approved.getId().equals(id))
+                    .ifPresent(approved -> {
+                        if (!approved.isOwnedBy(submission.getAuthorId())) {
+                            throw new ModuleIdTakenException("Модуль с id «" + submission.getModuleId()
+                                    + "» уже зарегистрирован другим автором");
+                        }
+                        approved.supersede(now);
+                        // Прежняя должна уйти из одобренных до того, как одобрим
+                        // новую: иначе сработает уникальный индекс по id модуля.
+                        repository.saveAndFlush(approved);
+                    });
+
+            submission.approve(moderatorId, comment, now);
             return SubmissionResponse.from(submission);
         });
     }
@@ -151,22 +177,41 @@ public class SubmissionService {
 
     /** Проверки без базы и загрузка манифеста — до транзакции. */
     private Prepared prepare(SubmissionRequest request) {
-        URI repositoryUrl = urlPolicy.require(request.repositoryUrl(), "repositoryUrl");
+        URI repositoryUrl = urlPolicy.requireRepository(request.repositoryUrl());
         URI manifestUrl = manifestFetcher.resolveManifestUrl(request.manifestUrl());
+        urlPolicy.requireInsideRepository(repositoryUrl, manifestUrl, "manifestUrl");
         Set<String> systemIds = gameSystemService.requireExisting(request.systemIds());
-        ModuleManifest manifest = manifestFetcher.fetch(manifestUrl);
+        ModuleManifest manifest = fetchFromRepository(repositoryUrl, manifestUrl);
 
         return new Prepared(repositoryUrl.toString(), manifestUrl.toString(), systemIds, manifest);
     }
 
+    /** Манифест и архив модуля должны лежать в заявленном репозитории. */
+    private ModuleManifest fetchFromRepository(URI repositoryUrl, URI manifestUrl) {
+        ModuleManifest manifest = manifestFetcher.fetch(manifestUrl);
+        urlPolicy.requireInsideRepository(repositoryUrl, URI.create(manifest.download()), "download");
+        return manifest;
+    }
+
+    /**
+     * Чужой модуль занять нельзя. Своему одобренному модулю автор может
+     * подать одну заявку-замену (например, со сменой ссылок), но вторую
+     * заявку на рассмотрении — нет: её нужно править.
+     */
     private void requireModuleIdFree(String moduleId, UUID authorId, UUID exceptSubmissionId) {
-        repository.findLiveByModuleId(moduleId)
-                .filter(live -> !live.getId().equals(exceptSubmissionId))
-                .ifPresent(live -> {
-                    throw new ModuleIdTakenException(live.isOwnedBy(authorId)
-                            ? "У вас уже есть заявка на модуль «" + moduleId + "» — правьте её"
-                            : "Модуль с id «" + moduleId + "» уже зарегистрирован другим автором");
-                });
+        for (ModuleSubmission live : repository.findLiveByModuleId(moduleId)) {
+            if (live.getId().equals(exceptSubmissionId)) {
+                continue;
+            }
+            if (!live.isOwnedBy(authorId)) {
+                throw new ModuleIdTakenException(
+                        "Модуль с id «" + moduleId + "» уже зарегистрирован другим автором");
+            }
+            if (live.getStatus() == SubmissionStatus.PENDING) {
+                throw new ModuleIdTakenException(
+                        "У вас уже есть заявка на модуль «" + moduleId + "» на рассмотрении — правьте её");
+            }
+        }
     }
 
     private ModuleSubmission requireOwned(UUID id, UUID userId) {
