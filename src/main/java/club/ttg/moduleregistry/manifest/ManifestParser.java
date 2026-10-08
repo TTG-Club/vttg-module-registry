@@ -13,8 +13,9 @@ import java.util.regex.Pattern;
  * Разбирает {@code module.json} по контракту VTTG ({@code docs/MODULES.md}).
  *
  * VTTG сам требует только {@code id}, {@code name} и {@code version}; реестру
- * нужен ещё {@code download} — архив, который VTTG скачает при установке, как
- * у систем, устанавливаемых по ссылке на манифест.
+ * нужны ещё {@code download} — архив, который VTTG скачает при установке, как
+ * у систем, устанавливаемых по ссылке на манифест, — и {@code description}:
+ * каталог показывает его как описание модуля.
  */
 @Component
 public class ManifestParser {
@@ -66,6 +67,8 @@ public class ManifestParser {
             throw new InvalidManifestException("version: нужна семантическая версия, например 1.0.0");
         }
 
+        String description = requiredString(root, "description", 1000);
+
         String download = requiredString(root, "download", 2048);
         urlPolicy.require(download, "download");
 
@@ -73,6 +76,7 @@ public class ManifestParser {
                 id,
                 name,
                 version,
+                description,
                 optionalString(root, "author", 150),
                 optionalString(root, "icon", 100),
                 download,

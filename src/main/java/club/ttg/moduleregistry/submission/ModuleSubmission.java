@@ -103,7 +103,6 @@ public class ModuleSubmission {
             String authorName,
             String repositoryUrl,
             String manifestUrl,
-            String description,
             ModuleManifest manifest,
             Instant now
     ) {
@@ -113,7 +112,7 @@ public class ModuleSubmission {
         submission.authorName = authorName;
         submission.status = SubmissionStatus.PENDING;
         submission.createdAt = now;
-        submission.setDetails(repositoryUrl, manifestUrl, description);
+        submission.setLinks(repositoryUrl, manifestUrl);
         submission.applyManifest(manifest, now);
         return submission;
     }
@@ -122,7 +121,6 @@ public class ModuleSubmission {
     public void resubmit(
             String repositoryUrl,
             String manifestUrl,
-            String description,
             ModuleManifest manifest,
             Instant now
     ) {
@@ -141,7 +139,7 @@ public class ModuleSubmission {
                                 + "). Это другой модуль — подайте на него отдельную заявку");
             }
         }
-        setDetails(repositoryUrl, manifestUrl, description);
+        setLinks(repositoryUrl, manifestUrl);
         applyManifest(manifest, now);
         status = SubmissionStatus.PENDING;
         moderatorId = null;
@@ -224,16 +222,16 @@ public class ModuleSubmission {
         this.updatedAt = now;
     }
 
-    private void setDetails(String repositoryUrl, String manifestUrl, String description) {
+    private void setLinks(String repositoryUrl, String manifestUrl) {
         this.repositoryUrl = repositoryUrl;
         this.manifestUrl = manifestUrl;
-        this.description = description.strip();
     }
 
     private void applyManifest(ModuleManifest manifest, Instant now) {
         this.moduleId = manifest.id();
         this.moduleName = manifest.name();
         this.moduleVersion = manifest.version();
+        this.description = manifest.description();
         this.moduleAuthor = manifest.author();
         this.moduleIcon = manifest.icon();
         this.downloadUrl = manifest.download();

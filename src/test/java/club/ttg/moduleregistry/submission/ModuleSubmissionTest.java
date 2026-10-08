@@ -21,13 +21,13 @@ class ModuleSubmissionTest {
     }
 
     static ModuleManifest manifest(String id, String version, List<String> systems) {
-        return new ModuleManifest(id, "Модуль", version, null, null,
+        return new ModuleManifest(id, "Модуль", version, "Описание", null, null,
                 "https://github.com/a/b/releases/download/v" + version + "/m.zip", systems, "{}");
     }
 
     static ModuleSubmission pending() {
         return ModuleSubmission.submit(AUTHOR, "author", "https://github.com/a/b",
-                "https://raw.githubusercontent.com/a/b/main/module.json", " Описание ",
+                "https://raw.githubusercontent.com/a/b/main/module.json",
                 manifest("m", "1.0.0", List.of("dnd5e-2024")), NOW);
     }
 
@@ -82,8 +82,7 @@ class ModuleSubmissionTest {
         ModuleSubmission submission = pending();
         submission.reject(MODERATOR, "Нет README", NOW);
 
-        submission.resubmit("https://github.com/a/b", "https://raw.githubusercontent.com/a/b/main/module.json",
-                "Новое описание", manifest("m", "1.0.1"), NOW);
+        submission.resubmit("https://github.com/a/b", "https://raw.githubusercontent.com/a/b/main/module.json", manifest("m", "1.0.1"), NOW);
 
         assertThat(submission.getStatus()).isEqualTo(SubmissionStatus.PENDING);
         assertThat(submission.getModerationComment()).isNull();
@@ -109,7 +108,7 @@ class ModuleSubmissionTest {
         submission.approve(MODERATOR, null, NOW);
 
         assertThatThrownBy(() -> submission.resubmit("https://github.com/a/b",
-                "https://raw.githubusercontent.com/a/b/main/module.json", "x",
+                "https://raw.githubusercontent.com/a/b/main/module.json",
                 manifest("m", "1.0.1"), NOW))
                 .isInstanceOf(InvalidSubmissionStateException.class);
     }
@@ -132,8 +131,7 @@ class ModuleSubmissionTest {
         ModuleSubmission submission = pending();
         assertThat(submission.isLinksLocked()).isFalse();
 
-        submission.resubmit("https://github.com/a/c", "https://raw.githubusercontent.com/a/c/main/module.json",
-                "x", manifest("m", "1.0.0"), NOW);
+        submission.resubmit("https://github.com/a/c", "https://raw.githubusercontent.com/a/c/main/module.json", manifest("m", "1.0.0"), NOW);
 
         assertThat(submission.getRepositoryUrl()).isEqualTo("https://github.com/a/c");
     }
@@ -147,14 +145,13 @@ class ModuleSubmissionTest {
         assertThat(submission.isLinksLocked()).isTrue();
         assertThat(submission.getApprovedAt()).isEqualTo(NOW);
         assertThatThrownBy(() -> submission.resubmit("https://github.com/a/other",
-                "https://raw.githubusercontent.com/a/other/main/module.json", "x",
+                "https://raw.githubusercontent.com/a/other/main/module.json",
                 manifest("m", "1.0.1"), NOW))
                 .isInstanceOf(InvalidSubmissionStateException.class)
                 .hasMessageContaining("новую заявку");
 
         // Описание и системы с прежними ссылками поправить можно.
-        submission.resubmit("https://github.com/a/b", "https://raw.githubusercontent.com/a/b/main/module.json",
-                "Исправил", manifest("m", "1.0.1"), NOW);
+        submission.resubmit("https://github.com/a/b", "https://raw.githubusercontent.com/a/b/main/module.json", manifest("m", "1.0.1"), NOW);
         assertThat(submission.getStatus()).isEqualTo(SubmissionStatus.PENDING);
         assertThat(submission.isLinksLocked()).isTrue();
     }

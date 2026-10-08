@@ -21,6 +21,7 @@ class ManifestParserTest {
                   "id": "map-import",
                   "name": "Импорт карт",
                   "version": "0.1.0",
+                  "description": " Импорт карт из Dungeondraft ",
                   "author": "TTG Club",
                   "icon": "tabler:map-plus",
                   "download": "https://github.com/ttg/map-import/releases/download/v0.1.0/module.zip",
@@ -31,6 +32,7 @@ class ManifestParserTest {
         assertThat(manifest.id()).isEqualTo("map-import");
         assertThat(manifest.name()).isEqualTo("Импорт карт");
         assertThat(manifest.version()).isEqualTo("0.1.0");
+        assertThat(manifest.description()).isEqualTo("Импорт карт из Dungeondraft");
         assertThat(manifest.author()).isEqualTo("TTG Club");
         assertThat(manifest.compatibleSystems()).containsExactly("dnd5e-2024", "pf2e");
         assertThat(manifest.json()).contains("map-import");
@@ -62,9 +64,19 @@ class ManifestParserTest {
     }
 
     @Test
+    void requiresDescription() {
+        assertThatThrownBy(() -> parser.parse("""
+                {"id": "m", "name": "М", "version": "1.0.0",
+                 "download": "https://github.com/a/b/releases/download/v1/m.zip"}
+                """))
+                .isInstanceOf(InvalidManifestException.class)
+                .hasMessageContaining("description");
+    }
+
+    @Test
     void requiresDownload() {
         assertThatThrownBy(() -> parser.parse("""
-                {"id": "m", "name": "М", "version": "1.0.0"}
+                {"id": "m", "name": "М", "version": "1.0.0", "description": "О"}
                 """))
                 .isInstanceOf(InvalidManifestException.class)
                 .hasMessageContaining("download");
@@ -73,7 +85,7 @@ class ManifestParserTest {
     @Test
     void rejectsDownloadOnForeignHost() {
         assertThatThrownBy(() -> parser.parse("""
-                {"id": "m", "name": "М", "version": "1.0.0", "download": "https://evil.example/m.zip"}
+                {"id": "m", "name": "М", "version": "1.0.0", "description": "О", "download": "https://evil.example/m.zip"}
                 """))
                 .isInstanceOf(InvalidManifestException.class)
                 .hasMessageContaining("download");
@@ -108,7 +120,7 @@ class ManifestParserTest {
     }
 
     private static String manifest(String nameFields) {
-        return "{\"id\": \"m\", \"version\": \"1.0.0\", "
+        return "{\"id\": \"m\", \"version\": \"1.0.0\", \"description\": \"Описание\", "
                 + "\"download\": \"https://github.com/a/b/releases/download/v1/m.zip\", "
                 + nameFields + "}";
     }

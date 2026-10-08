@@ -12,6 +12,7 @@ public record ModuleManifest(
         String id,
         String name,
         String version,
+        String description,
         String author,
         String icon,
         String download,

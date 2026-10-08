@@ -83,7 +83,7 @@ class SubmissionServiceTest {
     @Test
     void foreignModuleIdIsRefused() {
         ModuleSubmission foreign = ModuleSubmission.submit(UUID.randomUUID(), "other", REPOSITORY, MANIFEST,
-                "x", manifest("https://github.com/a/b/releases/download/v1/m.zip"), NOW);
+                manifest("https://github.com/a/b/releases/download/v1/m.zip"), NOW);
         given(repository.findLiveByModuleId("m")).willReturn(List.of(foreign));
         given(manifestFetcher.fetch(any())).willReturn(manifest("https://github.com/a/b/releases/download/v1/m.zip"));
 
@@ -135,15 +135,15 @@ class SubmissionServiceTest {
     }
 
     private static SubmissionRequest request(String manifestUrl) {
-        return new SubmissionRequest(manifestUrl, "Описание");
+        return new SubmissionRequest(manifestUrl);
     }
 
     private static ModuleManifest manifest(String download) {
-        return new ModuleManifest("m", "Модуль", "1.0.0", null, null, download, List.of(), "{}");
+        return new ModuleManifest("m", "Модуль", "1.0.0", "Описание", null, null, download, List.of(), "{}");
     }
 
     private static ModuleSubmission pending(String repositoryUrl, String manifestUrl) {
-        return ModuleSubmission.submit(AUTHOR, "author", repositoryUrl, manifestUrl, "x",
+        return ModuleSubmission.submit(AUTHOR, "author", repositoryUrl, manifestUrl,
                 manifest(repositoryUrl + "/releases/download/v1/m.zip"), NOW);
     }
 

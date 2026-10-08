@@ -62,8 +62,7 @@ class ApiSecurityTest {
 
     private static final String VALID_SUBMISSION = """
             {
-              "manifestUrl": "https://github.com/a/b/blob/main/module.json",
-              "description": "Импорт карт"
+              "manifestUrl": "https://github.com/a/b/blob/main/module.json"
             }
             """;
 
@@ -146,8 +145,7 @@ class ApiSecurityTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"manifestUrl\": \"\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors.manifestUrl").exists())
-                .andExpect(jsonPath("$.errors.description").exists());
+                .andExpect(jsonPath("$.errors.manifestUrl").exists());
     }
 
     @Test

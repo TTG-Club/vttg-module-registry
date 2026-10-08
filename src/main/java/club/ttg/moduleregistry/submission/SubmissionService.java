@@ -62,7 +62,6 @@ public class SubmissionService {
                     authorName,
                     prepared.repositoryUrl(),
                     prepared.manifestUrl(),
-                    request.description(),
                     prepared.manifest(),
                     clock.instant()
             );
@@ -81,7 +80,6 @@ public class SubmissionService {
             submission.resubmit(
                     prepared.repositoryUrl(),
                     prepared.manifestUrl(),
-                    request.description(),
                     prepared.manifest(),
                     clock.instant()
             );

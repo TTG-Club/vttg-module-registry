@@ -32,13 +32,15 @@ Swagger: `http://localhost:8080/swagger-ui.html`.
 
 ## Требования к модулю
 
-`module.json` по контракту VTTG (`vttg/docs/MODULES.md`) плюс поле `download`:
+`module.json` по контракту VTTG (`vttg/docs/MODULES.md`) плюс обязательные для
+каталога поля `description` и `download`:
 
 ```json
 {
   "id": "map-import",
   "name": "Импорт карт",
   "version": "0.1.0",
+  "description": "Импорт карт из Dungeondraft",
   "download": "https://github.com/<owner>/<repo>/releases/download/v0.1.0/map-import.zip",
   "compatibleSystems": ["dnd5e-2024"]
 }
@@ -46,6 +48,8 @@ Swagger: `http://localhost:8080/swagger-ui.html`.
 
 - `id` — `^[a-z0-9][a-z0-9_-]{0,63}$` (он же имя папки модуля в мире);
 - `version` — семантическая версия;
+- `description` — описание модуля для каталога, до 1000 символов. Автор его
+  в заявке отдельно не пишет;
 - `download` — https-ссылка на архив модуля в том же репозитории
   (например, на ассет релиза GitHub);
 - `compatibleSystems` — игровые системы модуля (до 20 id по 64 символа).
@@ -119,7 +123,7 @@ APPROVED ──одобрена заявка-замена того же авто
   "id": "map-import",
   "name": "Импорт карт",
   "version": "0.1.0",
-  "description": "Краткое описание из заявки",
+  "description": "Описание из module.json",
   "author": "TTG Club",
   "icon": "tabler:map-plus",
   "systemIds": ["dnd5e-2024"],
