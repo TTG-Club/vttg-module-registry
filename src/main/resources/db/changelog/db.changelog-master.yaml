@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/changes/002-create-module-submissions.sql
   - include:
       file: db/changelog/changes/003-lock-links-and-supersede.sql
+  - include:
+      file: db/changelog/changes/004-systems-from-manifest.sql

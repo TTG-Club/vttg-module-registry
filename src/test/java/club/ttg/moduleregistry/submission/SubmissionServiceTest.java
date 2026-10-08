@@ -6,7 +6,6 @@ import club.ttg.moduleregistry.manifest.ModuleManifest;
 import club.ttg.moduleregistry.manifest.UrlPolicy;
 import club.ttg.moduleregistry.manifest.UrlPolicyTest;
 import club.ttg.moduleregistry.submission.api.SubmissionRequest;
-import club.ttg.moduleregistry.system.GameSystemService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -19,7 +18,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,7 +37,6 @@ class SubmissionServiceTest {
     private static final String MANIFEST = "https://raw.githubusercontent.com/a/b/main/module.json";
 
     private final ModuleSubmissionRepository repository = mock(ModuleSubmissionRepository.class);
-    private final GameSystemService gameSystemService = mock(GameSystemService.class);
     private final ManifestFetcher manifestFetcher = mock(ManifestFetcher.class);
     private SubmissionService service;
 
@@ -50,13 +47,11 @@ class SubmissionServiceTest {
 
         service = new SubmissionService(
                 repository,
-                gameSystemService,
                 manifestFetcher,
                 new UrlPolicy(UrlPolicyTest.properties()),
                 new TransactionTemplate(transactionManager),
                 Clock.fixed(NOW, ZoneOffset.UTC));
 
-        given(gameSystemService.requireExisting(any())).willReturn(Set.of());
         given(manifestFetcher.resolveManifestUrl(any())).willAnswer(call -> URI.create(call.getArgument(0)));
         given(repository.save(any())).willAnswer(call -> call.getArgument(0));
     }
@@ -88,7 +83,7 @@ class SubmissionServiceTest {
     @Test
     void foreignModuleIdIsRefused() {
         ModuleSubmission foreign = ModuleSubmission.submit(UUID.randomUUID(), "other", REPOSITORY, MANIFEST,
-                "x", List.of(), manifest("https://github.com/a/b/releases/download/v1/m.zip"), NOW);
+                "x", manifest("https://github.com/a/b/releases/download/v1/m.zip"), NOW);
         given(repository.findLiveByModuleId("m")).willReturn(List.of(foreign));
         given(manifestFetcher.fetch(any())).willReturn(manifest("https://github.com/a/b/releases/download/v1/m.zip"));
 
@@ -140,7 +135,7 @@ class SubmissionServiceTest {
     }
 
     private static SubmissionRequest request(String manifestUrl) {
-        return new SubmissionRequest(manifestUrl, "Описание", List.of());
+        return new SubmissionRequest(manifestUrl, "Описание");
     }
 
     private static ModuleManifest manifest(String download) {
@@ -148,7 +143,7 @@ class SubmissionServiceTest {
     }
 
     private static ModuleSubmission pending(String repositoryUrl, String manifestUrl) {
-        return ModuleSubmission.submit(AUTHOR, "author", repositoryUrl, manifestUrl, "x", List.of(),
+        return ModuleSubmission.submit(AUTHOR, "author", repositoryUrl, manifestUrl, "x",
                 manifest(repositoryUrl + "/releases/download/v1/m.zip"), NOW);
     }
 

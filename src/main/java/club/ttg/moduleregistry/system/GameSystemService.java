@@ -6,10 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
-import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 @Service
 public class GameSystemService {
@@ -56,22 +53,5 @@ public class GameSystemService {
             throw new GameSystemInUseException(id);
         }
         repository.deleteById(id);
-    }
-
-    /** Проверяет, что все id есть в справочнике; порядок и дубликаты не важны. */
-    @Transactional(readOnly = true)
-    public Set<String> requireExisting(Collection<String> ids) {
-        Set<String> unique = new LinkedHashSet<>(ids);
-        Set<String> known = new LinkedHashSet<>();
-        repository.findAllById(unique).forEach(system -> known.add(system.getId()));
-
-        unique.stream()
-                .filter(id -> !known.contains(id))
-                .findFirst()
-                .ifPresent(id -> {
-                    throw new GameSystemNotFoundException(id);
-                });
-
-        return unique;
     }
 }

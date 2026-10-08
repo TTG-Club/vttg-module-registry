@@ -17,14 +17,18 @@ class ModuleSubmissionTest {
     private static final UUID MODERATOR = UUID.randomUUID();
 
     static ModuleManifest manifest(String id, String version) {
+        return manifest(id, version, List.of());
+    }
+
+    static ModuleManifest manifest(String id, String version, List<String> systems) {
         return new ModuleManifest(id, "Модуль", version, null, null,
-                "https://github.com/a/b/releases/download/v" + version + "/m.zip", List.of(), "{}");
+                "https://github.com/a/b/releases/download/v" + version + "/m.zip", systems, "{}");
     }
 
     static ModuleSubmission pending() {
         return ModuleSubmission.submit(AUTHOR, "author", "https://github.com/a/b",
                 "https://raw.githubusercontent.com/a/b/main/module.json", " Описание ",
-                List.of("dnd5e-2024"), manifest("m", "1.0.0"), NOW);
+                manifest("m", "1.0.0", List.of("dnd5e-2024")), NOW);
     }
 
     @Test
@@ -79,7 +83,7 @@ class ModuleSubmissionTest {
         submission.reject(MODERATOR, "Нет README", NOW);
 
         submission.resubmit("https://github.com/a/b", "https://raw.githubusercontent.com/a/b/main/module.json",
-                "Новое описание", List.of(), manifest("m", "1.0.1"), NOW);
+                "Новое описание", manifest("m", "1.0.1"), NOW);
 
         assertThat(submission.getStatus()).isEqualTo(SubmissionStatus.PENDING);
         assertThat(submission.getModerationComment()).isNull();
@@ -89,12 +93,23 @@ class ModuleSubmissionTest {
     }
 
     @Test
+    void manifestRefreshUpdatesSystems() {
+        ModuleSubmission submission = pending();
+        submission.approve(MODERATOR, null, NOW);
+
+        submission.refreshManifest(manifest("m", "1.1.0", List.of("pf2e", "homebrew-system")), NOW);
+
+        assertThat(submission.getSystemIds()).containsExactlyInAnyOrder("pf2e", "homebrew-system");
+        assertThat(submission.getStatus()).isEqualTo(SubmissionStatus.APPROVED);
+    }
+
+    @Test
     void approvedSubmissionCannotBeEdited() {
         ModuleSubmission submission = pending();
         submission.approve(MODERATOR, null, NOW);
 
         assertThatThrownBy(() -> submission.resubmit("https://github.com/a/b",
-                "https://raw.githubusercontent.com/a/b/main/module.json", "x", List.of(),
+                "https://raw.githubusercontent.com/a/b/main/module.json", "x",
                 manifest("m", "1.0.1"), NOW))
                 .isInstanceOf(InvalidSubmissionStateException.class);
     }
@@ -118,7 +133,7 @@ class ModuleSubmissionTest {
         assertThat(submission.isLinksLocked()).isFalse();
 
         submission.resubmit("https://github.com/a/c", "https://raw.githubusercontent.com/a/c/main/module.json",
-                "x", List.of(), manifest("m", "1.0.0"), NOW);
+                "x", manifest("m", "1.0.0"), NOW);
 
         assertThat(submission.getRepositoryUrl()).isEqualTo("https://github.com/a/c");
     }
@@ -132,14 +147,14 @@ class ModuleSubmissionTest {
         assertThat(submission.isLinksLocked()).isTrue();
         assertThat(submission.getApprovedAt()).isEqualTo(NOW);
         assertThatThrownBy(() -> submission.resubmit("https://github.com/a/other",
-                "https://raw.githubusercontent.com/a/other/main/module.json", "x", List.of(),
+                "https://raw.githubusercontent.com/a/other/main/module.json", "x",
                 manifest("m", "1.0.1"), NOW))
                 .isInstanceOf(InvalidSubmissionStateException.class)
                 .hasMessageContaining("новую заявку");
 
         // Описание и системы с прежними ссылками поправить можно.
         submission.resubmit("https://github.com/a/b", "https://raw.githubusercontent.com/a/b/main/module.json",
-                "Исправил", List.of(), manifest("m", "1.0.1"), NOW);
+                "Исправил", manifest("m", "1.0.1"), NOW);
         assertThat(submission.getStatus()).isEqualTo(SubmissionStatus.PENDING);
         assertThat(submission.isLinksLocked()).isTrue();
     }

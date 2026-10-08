@@ -24,6 +24,9 @@ public class ManifestParser {
     private static final Pattern VERSION =
             Pattern.compile("^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.+-]+)?$");
 
+    private static final int MAX_SYSTEMS = 20;
+    private static final int MAX_SYSTEM_ID_LENGTH = 64;
+
     private final ObjectMapper objectMapper;
     private final UrlPolicy urlPolicy;
 
@@ -97,9 +100,16 @@ public class ManifestParser {
             if (system.equals("*")) {
                 return List.of();
             }
+            if (system.length() > MAX_SYSTEM_ID_LENGTH) {
+                throw new InvalidManifestException(
+                        "compatibleSystems: id системы длиннее " + MAX_SYSTEM_ID_LENGTH + " символов");
+            }
             if (!system.isEmpty() && !systems.contains(system)) {
                 systems.add(system);
             }
+        }
+        if (systems.size() > MAX_SYSTEMS) {
+            throw new InvalidManifestException("compatibleSystems: не больше " + MAX_SYSTEMS + " систем");
         }
         return List.copyOf(systems);
     }

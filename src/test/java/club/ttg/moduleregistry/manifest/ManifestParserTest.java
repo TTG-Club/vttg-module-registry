@@ -51,6 +51,17 @@ class ManifestParserTest {
     }
 
     @Test
+    void rejectsTooManySystems() {
+        String systems = java.util.stream.IntStream.rangeClosed(1, 21)
+                .mapToObj(index -> "\"system-" + index + "\"")
+                .collect(java.util.stream.Collectors.joining(", "));
+
+        assertThatThrownBy(() -> parser.parse(manifest("\"name\": \"М\", \"compatibleSystems\": [" + systems + "]")))
+                .isInstanceOf(InvalidManifestException.class)
+                .hasMessageContaining("compatibleSystems");
+    }
+
+    @Test
     void requiresDownload() {
         assertThatThrownBy(() -> parser.parse("""
                 {"id": "m", "name": "М", "version": "1.0.0"}

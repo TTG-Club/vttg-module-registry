@@ -13,7 +13,6 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
 import java.time.Instant;
-import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -105,7 +104,6 @@ public class ModuleSubmission {
             String repositoryUrl,
             String manifestUrl,
             String description,
-            Collection<String> systemIds,
             ModuleManifest manifest,
             Instant now
     ) {
@@ -115,7 +113,7 @@ public class ModuleSubmission {
         submission.authorName = authorName;
         submission.status = SubmissionStatus.PENDING;
         submission.createdAt = now;
-        submission.setDetails(repositoryUrl, manifestUrl, description, systemIds);
+        submission.setDetails(repositoryUrl, manifestUrl, description);
         submission.applyManifest(manifest, now);
         return submission;
     }
@@ -125,7 +123,6 @@ public class ModuleSubmission {
             String repositoryUrl,
             String manifestUrl,
             String description,
-            Collection<String> systemIds,
             ModuleManifest manifest,
             Instant now
     ) {
@@ -144,7 +141,7 @@ public class ModuleSubmission {
                                 + "). Это другой модуль — подайте на него отдельную заявку");
             }
         }
-        setDetails(repositoryUrl, manifestUrl, description, systemIds);
+        setDetails(repositoryUrl, manifestUrl, description);
         applyManifest(manifest, now);
         status = SubmissionStatus.PENDING;
         moderatorId = null;
@@ -227,12 +224,10 @@ public class ModuleSubmission {
         this.updatedAt = now;
     }
 
-    private void setDetails(String repositoryUrl, String manifestUrl, String description, Collection<String> systemIds) {
+    private void setDetails(String repositoryUrl, String manifestUrl, String description) {
         this.repositoryUrl = repositoryUrl;
         this.manifestUrl = manifestUrl;
         this.description = description.strip();
-        this.systemIds.clear();
-        this.systemIds.addAll(systemIds);
     }
 
     private void applyManifest(ModuleManifest manifest, Instant now) {
@@ -243,6 +238,10 @@ public class ModuleSubmission {
         this.moduleIcon = manifest.icon();
         this.downloadUrl = manifest.download();
         this.manifestJson = manifest.json();
+        // Системы автор отдельно не указывает: каталог отбирает модули по тем
+        // же compatibleSystems, по которым совместимость проверяет сам VTTG.
+        this.systemIds.clear();
+        this.systemIds.addAll(manifest.compatibleSystems());
         this.manifestSyncedAt = now;
         this.updatedAt = now;
     }

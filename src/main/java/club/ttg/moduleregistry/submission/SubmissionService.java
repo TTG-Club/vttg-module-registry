@@ -5,7 +5,6 @@ import club.ttg.moduleregistry.manifest.ModuleManifest;
 import club.ttg.moduleregistry.manifest.UrlPolicy;
 import club.ttg.moduleregistry.submission.api.SubmissionRequest;
 import club.ttg.moduleregistry.submission.api.SubmissionResponse;
-import club.ttg.moduleregistry.system.GameSystemService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,7 +15,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -31,7 +29,6 @@ import java.util.UUID;
 public class SubmissionService {
 
     private final ModuleSubmissionRepository repository;
-    private final GameSystemService gameSystemService;
     private final ManifestFetcher manifestFetcher;
     private final UrlPolicy urlPolicy;
     private final TransactionTemplate transaction;
@@ -40,14 +37,12 @@ public class SubmissionService {
 
     public SubmissionService(
             ModuleSubmissionRepository repository,
-            GameSystemService gameSystemService,
             ManifestFetcher manifestFetcher,
             UrlPolicy urlPolicy,
             TransactionTemplate transaction,
             Clock clock
     ) {
         this.repository = repository;
-        this.gameSystemService = gameSystemService;
         this.manifestFetcher = manifestFetcher;
         this.urlPolicy = urlPolicy;
         this.transaction = transaction;
@@ -68,7 +63,6 @@ public class SubmissionService {
                     prepared.repositoryUrl(),
                     prepared.manifestUrl(),
                     request.description(),
-                    prepared.systemIds(),
                     prepared.manifest(),
                     clock.instant()
             );
@@ -88,7 +82,6 @@ public class SubmissionService {
                     prepared.repositoryUrl(),
                     prepared.manifestUrl(),
                     request.description(),
-                    prepared.systemIds(),
                     prepared.manifest(),
                     clock.instant()
             );
@@ -182,10 +175,9 @@ public class SubmissionService {
         URI manifestUrl = manifestFetcher.resolveManifestUrl(request.manifestUrl());
         // Репозиторий не спрашиваем у автора, а берём из ссылки на манифест.
         URI repositoryUrl = urlPolicy.repositoryOf(manifestUrl, "manifestUrl");
-        Set<String> systemIds = gameSystemService.requireExisting(request.systemIds());
         ModuleManifest manifest = fetchFromRepository(repositoryUrl, manifestUrl);
 
-        return new Prepared(repositoryUrl.toString(), manifestUrl.toString(), systemIds, manifest);
+        return new Prepared(repositoryUrl.toString(), manifestUrl.toString(), manifest);
     }
 
     /** Манифест и архив модуля должны лежать в заявленном репозитории. */
@@ -226,6 +218,6 @@ public class SubmissionService {
         return repository.findById(id).orElseThrow(() -> new SubmissionNotFoundException(id));
     }
 
-    private record Prepared(String repositoryUrl, String manifestUrl, Set<String> systemIds, ModuleManifest manifest) {
+    private record Prepared(String repositoryUrl, String manifestUrl, ModuleManifest manifest) {
     }
 }
